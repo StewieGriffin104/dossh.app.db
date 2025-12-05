@@ -1,0 +1,224 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum AccountType {
+  EVERYDAY
+  CORPORATE
+}
+
+enum BusinessType {
+  BUSINESS_OWNER
+  TRUST_OWNER
+  EMPLOYEE
+}
+
+enum PlanType {
+  BASIC
+  STANDARD
+  PREMIUM
+}
+
+// For internal use case
+enum Role {
+  CUSTOMER
+  DEVELOPER
+  TESTING
+  MANAGER
+}
+
+model devices {
+  id                String    @id @default(cuid())
+  customerId        String
+  deviceName        String?
+  deviceType        String? // "mobile" | "tablet" | "desktop"
+  os                String?
+  osVersion         String?
+  deviceFingerprint String?
+  ip                String?
+  isActive          Boolean   @default(true)
+  lastUsedAt        DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  customer customers       @relation(fields: [customerId], references: [id])
+  events   device_events[]
+
+  registrationTokens   registration_tokens[]
+  registrationAttempts registration_attempts[]
+  blocks               blocks[]
+  smsEvents            sms_events[]
+
+  @@index([customerId])
+  @@index([deviceFingerprint])
+  @@index([ip])
+  @@index([isActive])
+}
+
+model device_events {
+  id        String   @id @default(cuid())
+  deviceId  String
+  eventType String
+  eventMeta Json?
+  createdAt DateTime @default(now())
+
+  device devices @relation(fields: [deviceId], references: [id])
+
+  @@index([deviceId])
+  @@index([eventType])
+  @@index([createdAt])
+}
+
+model customers {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  emailVerified Boolean  @default(false)
+  phone         String?  @unique
+  phoneVerified Boolean  @default(false)
+  firstName     String?
+  lastName      String?
+  username      String?
+  passwordHash  String // bcrypt / argon2 hash
+  imageUrl      String?
+  role          Role     @default(CUSTOMER)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  accounts accounts?
+  devices  devices[]
+
+  @@index([emailVerified])
+  @@index([phoneVerified])
+  @@index([createdAt])
+}
+
+model registration_tokens {
+  id                String    @id @default(cuid())
+  email             String?
+  phone             String
+  firstName         String?
+  lastName          String?
+  passwordHash      String // store hashed password (or encrypt) while pending
+  token             String // 6-digit code (store as string), hashed version recommended
+  tokenHash         String? // (optional) hashed token if you don't want to store plain token
+  tokenType         String    @default("sms") // sms / email
+  ip                String? // inet string
+  deviceFingerprint String? // device fingerprint hash
+  attempts          Int       @default(0) // how many times user tried to validate this token
+  maxAttempts       Int       @default(5) // configurable
+  createdAt         DateTime  @default(now())
+  expiresAt         DateTime // e.g., now() + interval '10 minutes'
+  verifiedAt        DateTime?
+  verifiedByUserId  String? // customers.id when verified (optional)
+  status            String    @default("pending") // pending / verified / expired / blocked
+  meta              Json?
+  devices           devices?  @relation(fields: [devicesId], references: [id])
+  devicesId         String?
+
+  @@unique([phone, token]) // optional uniqueness to avoid dup tokens for same phone
+  @@index([phone])
+  @@index([email])
+  @@index([ip])
+  @@index([deviceFingerprint])
+  @@index([expiresAt])
+  @@index([status])
+}
+
+model registration_attempts {
+  id        String   @id @default(cuid())
+  phone     String?
+  email     String?
+  ip        String?
+  deviceId  String?
+  action    String // "created_token", "validated_token", "resent_sms"
+  result    String // "success" / "fail" / "blocked"
+  reason    String? // "invalid_token", "rate_limited", "blocked_ip", "sms_failed"
+  createdAt DateTime @default(now())
+  devices   devices? @relation(fields: [devicesId], references: [id])
+  devicesId String?
+
+  @@index([phone])
+  @@index([email])
+  @@index([ip])
+  @@index([createdAt])
+}
+
+model sms_events {
+  id         String   @id @default(cuid())
+  phone      String
+  direction  String   @default("outbound") // outbound / inbound
+  provider   String? // e.g., "twilio"
+  providerId String? // provider message id
+  status     String // sent / delivered / failed / queued
+  statusCode String?
+  message    String? // optional message body summary
+  meta       Json?
+  createdAt  DateTime @default(now())
+  devices    devices? @relation(fields: [devicesId], references: [id])
+  devicesId  String?
+
+  @@index([phone])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model blocks {
+  id        String    @id @default(cuid())
+  scope     String // "ip" | "phone" | "email" | "device"
+  value     String // the ip / phone / email / device fingerprint
+  reason    String?
+  source    String? // "auto-rule" | "admin" | "threat-feed"
+  createdAt DateTime  @default(now())
+  expiresAt DateTime? // null = permanent
+  active    Boolean   @default(true)
+  meta      Json?
+  devices   devices?  @relation(fields: [devicesId], references: [id])
+  devicesId String?
+
+  @@unique([scope, value])
+  @@index([scope, value])
+  @@index([active])
+  @@index([expiresAt])
+}
+
+model accounts {
+  id         String @id @default(cuid())
+  customerId String @unique // 1-to-1 with customers
+
+  accountType AccountType @default(EVERYDAY)
+
+  businessType BusinessType?
+
+  isActive Boolean @default(true)
+
+  // Subscription type statically defined
+  planId        String? // in future we could need this for more detailed plan management
+  plan          PlanType @default(BASIC)
+  planUpdatedAt DateTime @default(now())
+  planStartAt   DateTime @default(now())
+
+  planEndAt  DateTime?
+  renewAt    DateTime?
+  canceledAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  customer customers @relation(fields: [customerId], references: [id])
+
+  @@index([accountType])
+  @@index([businessType])
+}
