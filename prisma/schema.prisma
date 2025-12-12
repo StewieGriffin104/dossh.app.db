@@ -41,7 +41,7 @@ enum Role {
 
 model devices {
   id                String    @id @default(cuid())
-  customerId        String
+  customerId        String?
   deviceName        String?
   deviceType        String? // "mobile" | "tablet" | "desktop"
   os                String?
@@ -54,7 +54,7 @@ model devices {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  customer customers       @relation(fields: [customerId], references: [id])
+  customer customers?      @relation(fields: [customerId], references: [id])
   events   device_events[]
 
   registrationTokens   registration_tokens[]
