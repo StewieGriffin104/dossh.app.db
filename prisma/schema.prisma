@@ -93,6 +93,7 @@ model customers {
   username      String?
   passwordHash  String // bcrypt / argon2 hash
   imageUrl      String?
+  isActive      Boolean  @default(false)
   role          Role     @default(CUSTOMER)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
