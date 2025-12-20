@@ -111,7 +111,6 @@ model registration_tokens {
   phone             String
   firstName         String?
   lastName          String?
-  passwordHash      String // store hashed password (or encrypt) while pending
   token             String // 6-digit code (store as string), hashed version recommended
   tokenHash         String? // (optional) hashed token if you don't want to store plain token
   tokenType         String    @default("sms") // sms / email
