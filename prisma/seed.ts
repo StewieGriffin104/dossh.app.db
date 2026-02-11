@@ -3,7 +3,7 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Starting database seed...');
+  console.log('Starting database seed...');
 
   // Create test device
   const testDevice = await prisma.devices.upsert({
@@ -22,7 +22,7 @@ async function main() {
     },
   });
 
-  console.log('✅ Created test device:', testDevice.id);
+  console.log('Created test device:', testDevice.id);
 
   // Create additional test devices for different scenarios
   const devices = [
@@ -56,15 +56,15 @@ async function main() {
         lastUsedAt: new Date(),
       },
     });
-    console.log('✅ Created device:', device.id);
+    console.log('Created device:', device.id);
   }
 
-  console.log('🎉 Seed completed successfully!');
-  console.log('\n📝 Test Device IDs:');
+  console.log('Seed completed successfully!');
+  console.log('\nTest Device IDs:');
   console.log('  - test-device-123 (primary test device)');
   console.log('  - mobile-device-001 (mobile test)');
   console.log('  - desktop-device-001 (desktop test)');
-  console.log('\n💡 You can now test registration with deviceId: "test-device-123"');
+  console.log('\nYou can now test registration with deviceId: "test-device-123"');
 }
 
 main()
@@ -72,7 +72,7 @@ main()
     await prisma.$disconnect();
   })
   .catch(async (e) => {
-    console.error('❌ Seed failed:', e);
+    console.error('Seed failed:', e);
     await prisma.$disconnect();
     process.exit(1);
   });
