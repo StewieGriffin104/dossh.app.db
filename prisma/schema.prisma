@@ -201,10 +201,9 @@ model accounts {
 
   businessType BusinessType?
 
-  isActive Boolean @default(true)
+  isKycVerified Boolean @default(false)
 
-  // Subscription type statically defined
-  planId        String? // in future we could need this for more detailed plan management
+  planId        String?
   plan          PlanType @default(BASIC)
   planUpdatedAt DateTime @default(now())
   planStartAt   DateTime @default(now())
@@ -220,4 +219,5 @@ model accounts {
 
   @@index([accountType])
   @@index([businessType])
+  @@index([isKycVerified])
 }
