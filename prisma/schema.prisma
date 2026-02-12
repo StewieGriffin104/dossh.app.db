@@ -201,7 +201,11 @@ model accounts {
 
   businessType BusinessType?
 
+<<<<<<< HEAD
   isKycVerified Boolean @default(false)
+=======
+  isKYCVerified Boolean @default(true)
+>>>>>>> 9907721 (Rename isActive column to isKYCVerified in accounts model and update migration script)
 
   planId        String?
   plan          PlanType @default(BASIC)
