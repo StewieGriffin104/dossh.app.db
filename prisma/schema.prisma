@@ -201,15 +201,7 @@ model accounts {
 
   businessType BusinessType?
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-  isKycVerified Boolean @default(false)
-=======
-  isKYCVerified Boolean @default(true)
->>>>>>> 9907721 (Rename isActive column to isKYCVerified in accounts model and update migration script)
-=======
   isKYCVerified Boolean @default(false)
->>>>>>> d6f1038 (Set default value of isKYCVerified to false in accounts model)
 
   planId        String?
   plan          PlanType @default(BASIC)
@@ -227,5 +219,5 @@ model accounts {
 
   @@index([accountType])
   @@index([businessType])
-  @@index([isKycVerified])
+  @@index([isKYCVerified])
 }
