@@ -2,15 +2,24 @@
   "name": "dossh.app.db",
   "version": "1.0.0",
   "main": "index.js",
-  "scripts": {},
+  "scripts": {
+    "seed": "tsx prisma/seed.ts"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
   "dependencies": {
     "@prisma/client": "^6.19.0"
   },
   "devDependencies": {
-    "prisma": "^6.19.0"
+    "prisma": "^6.19.0",
+    "tsx": "^4.19.2",
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2"
   }
 }
+

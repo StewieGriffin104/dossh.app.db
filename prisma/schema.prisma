@@ -5,8 +5,7 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
@@ -52,7 +51,7 @@ model devices {
   lastUsedAt        DateTime?
 
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now()) @updatedAt
 
   customer customers?      @relation(fields: [customerId], references: [id])
   events   device_events[]
@@ -96,7 +95,7 @@ model customers {
   isActive      Boolean  @default(false)
   role          Role     @default(CUSTOMER)
   createdAt     DateTime @default(now())
-  updatedAt     DateTime @default(now())
+  updatedAt     DateTime @default(now()) @updatedAt
 
   accounts accounts?
   devices  devices[]
@@ -109,7 +108,7 @@ model customers {
 model registration_tokens {
   id                String    @id @default(cuid())
   email             String?
-  phone             String
+  phone             String?
   firstName         String?
   lastName          String?
   token             String // 6-digit code (store as string), hashed version recommended
@@ -128,7 +127,7 @@ model registration_tokens {
   devices           devices?  @relation(fields: [devicesId], references: [id])
   devicesId         String?
 
-  @@unique([phone, token]) // optional uniqueness to avoid dup tokens for same phone
+  @@unique([email, token]) // optional uniqueness to avoid dup tokens for same phone
   @@index([phone])
   @@index([email])
   @@index([ip])
@@ -214,7 +213,7 @@ model accounts {
   canceledAt DateTime?
 
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now()) @updatedAt
 
   customer customers @relation(fields: [customerId], references: [id])
 
