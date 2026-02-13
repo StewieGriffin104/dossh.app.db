@@ -38,6 +38,115 @@ enum Role {
   MANAGER
 }
 
+// KYC related enums
+enum KYCStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  RESUBMIT_REQUIRED
+}
+
+enum KYCSection {
+  PERSONAL_DETAILS
+  CONTACT_DETAILS
+  SOURCE_OF_FUNDS
+  PRIMARY_DOCUMENT
+  SECONDARY_DOCUMENT
+  BIOMETRICS
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  NON_BINARY
+  PREFER_NOT_TO_SAY
+  OTHER
+}
+
+enum MaritalStatus {
+  SINGLE
+  MARRIED
+  DIVORCED
+  WIDOWED
+  SEPARATED
+  COMMON_LAW
+}
+
+enum VisaStatus {
+  AUSTRALIAN_CITIZEN
+  PERMANENT_RESIDENT
+  TEMPORARY_VISA
+  STUDENT_VISA
+  WORK_VISA
+  REFUGEE_VISA
+  OTHER
+}
+
+enum DocumentType {
+  DRIVERS_LICENCE
+  PASSPORT
+  NATIONAL_ID
+  BIRTH_CERTIFICATE
+  PROOF_OF_AGE_CARD
+  BANK_STATEMENT
+  UTILITY_BILL
+  GOVERNMENT_LETTER
+  OTHER
+}
+
+enum IncomeRange {
+  BELOW_30K
+  FROM_30K_TO_50K
+  FROM_50K_TO_80K
+  FROM_80K_TO_120K
+  FROM_120K_TO_200K
+  ABOVE_200K
+}
+
+enum IncomeSource {
+  SALARY
+  BUSINESS
+  INVESTMENT
+  PENSION
+  RENTAL
+  GOVERNMENT_BENEFITS
+  OTHER
+}
+
+enum VerificationProvider {
+  PROVIDER_A
+  PROVIDER_B
+}
+
+enum VerificationStatus {
+  PENDING
+  IN_PROGRESS
+  SUCCESS
+  FAILED
+  ERROR
+}
+
+enum RejectionReason {
+  DOCUMENT_EXPIRED
+  DOCUMENT_UNCLEAR
+  INFORMATION_MISMATCH
+  FRAUD_SUSPECTED
+  INCOMPLETE_INFORMATION
+  FAILED_BIOMETRIC_CHECK
+  FAILED_THIRD_PARTY_VERIFICATION
+  OTHER
+}
+
+enum AddressType {
+  BILLING
+  SHIPPING
+  RESIDENTIAL
+  BUSINESS
+}
+
 model devices {
   id                String    @id @default(cuid())
   customerId        String?
@@ -97,8 +206,9 @@ model customers {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @default(now()) @updatedAt
 
-  accounts accounts?
-  devices  devices[]
+  accounts       accounts?
+  devices        devices[]
+  kycSubmissions kyc_submissions[]
 
   @@index([emailVerified])
   @@index([phoneVerified])
@@ -193,6 +303,180 @@ model blocks {
   @@index([expiresAt])
 }
 
+model addresses {
+  id        String @id @default(cuid())
+  accountId String
+
+  type      AddressType @default(BILLING)
+  isDefault Boolean     @default(false)
+
+  // Address fields
+  streetAddress  String
+  streetAddress2 String? // Apartment, suite, unit number, etc.
+  city           String
+  state          String
+  postalCode     String
+  country        String  @default("AU")
+
+  // Metadata
+  label     String? // e.g., "Home", "Office", "Main Card"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  account accounts @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId])
+  @@index([type])
+  @@index([isDefault])
+}
+
+// KYC Submissions - Main KYC data table
+model kyc_submissions {
+  id         String @id @default(cuid())
+  customerId String
+
+  // Status tracking
+  status            KYCStatus        @default(IN_PROGRESS)
+  submittedAt       DateTime?
+  reviewedAt        DateTime?
+  approvedAt        DateTime?
+  rejectedAt        DateTime?
+  rejectionReason   RejectionReason?
+  rejectionDetails  String?
+  completedSections KYCSection[]
+
+  // Personal Details
+  title         String?
+  firstName     String
+  middleName    String?
+  lastName      String
+  dateOfBirth   DateTime
+  gender        Gender?
+  maritalStatus MaritalStatus?
+  visaStatus    VisaStatus?
+
+  // Contact Details
+  email         String
+  phone         String
+  streetAddress String?
+  city          String?
+  state         String?
+  postalCode    String?
+  country       String?
+
+  // Source of Funds
+  occupation           String?
+  industryType         String?
+  annualIncome         IncomeRange?
+  incomeSources        IncomeSource[] // Array type
+  activities           String[] // Activity types
+  transactionCountries String[] // Transaction country codes
+
+  // Biometrics
+  biometricConsentGiven Boolean   @default(false)
+  biometricConsentAt    DateTime?
+
+  // Metadata
+  submissionData Json? // Stores complete frontend JSON as backup
+  internalNotes  String? // Internal review notes
+  lastUpdated    DateTime @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  customer      customers           @relation(fields: [customerId], references: [id])
+  documents     kyc_documents[]
+  verifications kyc_verifications[]
+
+  @@index([customerId])
+  @@index([status])
+  @@index([submittedAt])
+  @@index([approvedAt])
+}
+
+// KYC Documents - Stores all uploaded documents
+model kyc_documents {
+  id           String @id @default(cuid())
+  submissionId String
+
+  // Document Classification
+  documentType    DocumentType
+  documentPurpose String // "primary_id", "secondary_id", "proof_of_address", "selfie"
+
+  // Document Details
+  documentNumber String?
+  issuingCountry String?
+  expiryDate     DateTime?
+
+  // File Storage (S3)
+  s3Key        String // S3 object key
+  s3Bucket     String? // S3 bucket name
+  fileUrl      String // URL used by frontend (can be pre-signed URL)
+  originalPath String? // Original upload path (from frontend)
+  fileName     String?
+  fileSize     Int? // bytes
+  mimeType     String?
+
+  // Image specific (for photos with front/back)
+  imageSide String? // "front", "back", null for single-sided
+
+  // Metadata
+  uploadedAt        DateTime  @default(now())
+  processedAt       DateTime? // Document processing completion time
+  verified          Boolean   @default(false)
+  verifiedAt        DateTime?
+  additionalDetails Json? // Stores additional document details
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  submission kyc_submissions @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@index([submissionId])
+  @@index([documentType])
+  @@index([documentPurpose])
+  @@index([verified])
+}
+
+// KYC Verifications - Third-party verification results
+model kyc_verifications {
+  id           String @id @default(cuid())
+  submissionId String
+
+  // Provider Info
+  provider          VerificationProvider
+  providerSessionId String? // Third-party session/transaction ID
+
+  // Verification Details
+  verificationType String // "identity", "document", "biometric", "address"
+  status           VerificationStatus @default(PENDING)
+  score            Float? // Confidence score (0-100)
+
+  // Results
+  checksPassed    String[] // Passed checks
+  checksFailed    String[] // Failed checks
+  matchPercentage Float? // Match percentage
+
+  // Response Data
+  requestPayload Json? // Data sent to third-party
+  responseData   Json? // Complete response from third-party
+  errorMessage   String?
+
+  // Timestamps
+  requestedAt DateTime  @default(now())
+  completedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  submission kyc_submissions @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@index([submissionId])
+  @@index([provider])
+  @@index([status])
+  @@index([verificationType])
+}
+
 model accounts {
   id         String @id @default(cuid())
   customerId String @unique // 1-to-1 with customers
@@ -201,7 +485,19 @@ model accounts {
 
   businessType BusinessType?
 
-  isKYCVerified Boolean @default(false)
+  // KYC fields
+  isKYCVerified       Boolean   @default(false)
+  kycStatus           KYCStatus @default(NOT_STARTED)
+  kycVerifiedAt       DateTime?
+  kycRejectedAt       DateTime?
+  currentSubmissionId String?
+  kycLevel            Int       @default(0) // 0=unverified, 1=basic, 2=fully_verified
+
+  // Account-level documents (non-KYC)
+  profileImageUrl   String? // User profile image S3 URL
+  profileImageS3Key String? // S3 key for profile image
+  companyLogoUrl    String? // Company logo (for corporate accounts)
+  companyLogoS3Key  String? // S3 key for company logo
 
   planId        String?
   plan          PlanType @default(BASIC)
@@ -215,9 +511,11 @@ model accounts {
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
 
-  customer customers @relation(fields: [customerId], references: [id])
+  customer  customers   @relation(fields: [customerId], references: [id])
+  addresses addresses[]
 
   @@index([accountType])
   @@index([businessType])
   @@index([isKYCVerified])
+  @@index([kycStatus])
 }

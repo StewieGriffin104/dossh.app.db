@@ -1,2 +1,3 @@
+-- This migration was skipped as the isActive column was later removed in migration 20260212091736_update_account_col_name
 -- AlterTable
-ALTER TABLE "accounts" ALTER COLUMN "isActive" SET DEFAULT false;
+-- ALTER TABLE "accounts" ALTER COLUMN "isActive" SET DEFAULT false;
